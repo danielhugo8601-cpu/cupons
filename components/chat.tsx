@@ -9,13 +9,18 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Mensagem {
   id: number
+  feedback_id: number
   remetente: "usuario" | "admin"
   mensagem: string
   data: string
   lida: boolean
 }
 
-export default function Chat() {
+interface ChatProps {
+  feedbackId: number
+}
+
+export default function Chat({ feedbackId }: ChatProps) {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
   const [mensagem, setMensagem] = useState("")
@@ -44,8 +49,8 @@ export default function Chat() {
       })
       .catch(console.error)
 
-    // Buscar mensagens existentes
-    fetch("/api/chat")
+    // Buscar mensagens existentes do feedback específico
+    fetch(`/api/chat/feedback/${feedbackId}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.mensagens) {
@@ -56,17 +61,19 @@ export default function Chat() {
 
     // Escutar novas mensagens
     socketInstance.on("nova_mensagem", (msg: Mensagem) => {
-      setMensagens((prev) => [...prev, msg])
+      if (msg.feedback_id === feedbackId) {
+        setMensagens((prev) => [...prev, msg])
 
-      // Mostrar notificação se chat está fechado e mensagem é de outro remetente
-      if (!chatAberto && msg.remetente !== papel) {
-        setTemNovaMsg(true)
+        // Mostrar notificação se chat está fechado e mensagem é de outro remetente
+        if (!chatAberto && msg.remetente !== papel) {
+          setTemNovaMsg(true)
+        }
       }
     })
 
     socketInstance.on("connect", () => {
-      console.log("✅ Socket.IO conectado")
-      socketInstance.emit("join_chat")
+      console.log(`✅ Socket.IO conectado para feedback ${feedbackId}`)
+      socketInstance.emit("join_feedback", feedbackId)
     })
 
     socketInstance.on("connect_error", (error) => {
@@ -74,10 +81,10 @@ export default function Chat() {
     })
 
     return () => {
-      socketInstance.emit("leave_chat")
+      socketInstance.emit("leave_feedback", feedbackId)
       socketInstance.disconnect()
     }
-  }, [chatAberto, papel])
+  }, [feedbackId, chatAberto, papel])
 
   // Auto-scroll para última mensagem
   useEffect(() => {
@@ -91,7 +98,7 @@ export default function Chat() {
 
     setCarregando(true)
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch(`/api/chat/feedback/${feedbackId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mensagem: mensagem.trim() }),

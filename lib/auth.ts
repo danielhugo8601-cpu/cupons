@@ -8,6 +8,7 @@ export interface User {
   name: string
   email: string
   role: "usuario" | "admin"
+  papel: "usuario" | "admin"
   avatar_url?: string | null
   created_at: Date
 }
@@ -57,6 +58,7 @@ export async function getCurrentUser(): Promise<User | null> {
     name: sessions[0].nome,
     email: sessions[0].email,
     role: sessions[0].papel,
+    papel: sessions[0].papel,
     avatar_url: sessions[0].avatar_url,
     created_at: sessions[0].criado_em,
   }
